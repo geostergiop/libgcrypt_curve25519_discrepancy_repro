@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this repository, cite the relevant subproject and the original CVE or paper it reproduces or studies."
+title: "Curve25519 toric-discrepancy side-channel reproduction"
+authors:
+  - alias: "geostergiop"
+repository-code: "https://github.com/geostergiop/libgcrypt_curve25519_discrepancy_repro"
+date-released: "2026-06-18"
+keywords:
+  - side-channel
+  - elliptic-curve cryptography
+  - discrepancy
+  - Curve25519
+  - Libgcrypt
+  - reproducibility
