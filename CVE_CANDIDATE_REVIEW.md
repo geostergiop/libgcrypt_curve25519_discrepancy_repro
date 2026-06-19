@@ -62,9 +62,11 @@ point x-coordinate, toric, genus 0, algebraic torus, Lucas ladder.
 Libgcrypt CVE-2017-0379 remains the confirmed CVE-backed instance for the
 strict toric/Kummer claim.
 
-No second positive candidate is currently included. A new case should not be
-added unless the algebraic object directly predicts the leakage label, not just
-because the implementation uses lifted coordinates.
+Local update: wolfSSL CVE-2025-7396 was instrumented as a source-level
+subproject. The wolfSSL base-C Curve25519 code path instantiates the
+discrepancy-pole label `u = +/-1 -> X = +/-Z`, and PR #8392 is compatible with
+a leakage model involving projective Montgomery coordinate values in the
+base-C ladder.
 
 ## Confirmed Positive
 
@@ -72,17 +74,17 @@ because the implementation uses lifted coordinates.
 | --- | --- | --- |
 | CVE-2017-0379, Libgcrypt Curve25519 | Keep | Direct match. The published attack uses a Curve25519 point of order 4 as chosen ciphertext. Libgcrypt uses Montgomery ladder scalar-by-point multiplication, and the point-at-infinity/order-2/order-4 interactions create side-channel leakage. The local artifact ties this to `u = +/-1 -> X = +/-Z -> short/long reduction label`. |
 
-## Strong Research Candidates For New Tests
+## Source-Level And Research Candidates
 
-These are not CVE-backed confirmations, but they remain useful next tests for a
-broader lifted-coordinate discrepancy claim.
+These are useful source-level tests for a broader lifted-coordinate discrepancy
+claim.
 
 | Candidate | Status | Why It Matters |
 | --- | --- | --- |
-| CVE-2025-7396, wolfSSL Curve25519 C implementation | Active candidate, not confirmed | This is the strongest current CVE candidate because the affected code is X25519/Montgomery-ladder scalar multiplication and the mitigation is Curve25519 blinding. A local formula check using wolfSSL's ladder sequence shows `u = +1` forces `X - Z = 0` labels and `u = -1` forces `X + Z = 0` labels, while the base point does not. The missing proof is whether the reported physical side-channel exploited this discrepancy label rather than generic scalar/value leakage. |
-| Hessian, Edwards, and genus-0 toric/rational testbeds | Test candidate | These are useful for mathematical generalization tests. They should be treated as new experiments, not evidence from existing CVEs, unless a concrete implementation exposes a lifted-coordinate label during scalar multiplication. |
+| CVE-2025-7396, wolfSSL Curve25519 C implementation | Source-level coordinate-leakage audit | Local instrumentation confirms that `u = +1` and `u = -1` force `X = +/-Z` labels in wolfSSL's base-C Montgomery ladder. In the unblinded path the label equals `scalar_bit[s] XOR scalar_bit[s+1]`; in the blinded/default path it equals `scalar_bit[s] XOR scalar_bit[s-1]`. PR #8392's public text describes scalar blinding and special scalar multiplication; its merged commit also randomizes `x3,z3`, making the patch trail compatible with a leakage model involving projective Montgomery coordinate values. |
+| Hessian, Edwards, and genus-0 toric/rational testbeds | Test candidate | Useful mathematical generalization tests where the experiment can directly instrument lifted-coordinate labels during scalar multiplication. |
 
-## Active Candidate: wolfSSL CVE-2025-7396
+## Local Audit: wolfSSL CVE-2025-7396
 
 Evidence gathered locally:
 
@@ -128,7 +130,7 @@ wolfssl/wolfcrypt/settings.h in 5.8.2
   Curve25519 builds unless explicitly disabled.
 ```
 
-The local algebraic check mirrors wolfSSL's ladder formulas over
+The local source instrumentation mirrors wolfSSL's ladder formulas over
 `p = 2^255 - 19`:
 
 ```text
@@ -136,10 +138,10 @@ basepoint u = 9:
   no X +/- Z zero labels in the checked ladder steps
 
 u = +1:
-  repeated X - Z = 0 labels
+  repeated X - Z = 0 labels at fixed ladder formula sites
 
 u = -1:
-  repeated X + Z = 0 labels
+  repeated X + Z = 0 labels at fixed ladder formula sites
 ```
 
 That is the same kind of discrepancy bridge as the Libgcrypt artifact at the
@@ -152,13 +154,36 @@ Curve25519 discrepancy pole u = +/-1
 -> physically plausible DPA/EM value label
 ```
 
-Current classification: active candidate, not confirmed positive.
+The exact source-instrumented scalar relations were:
 
-Reason for caution: the public wolfSSL CVE/advisory does not say the reported
-side-channel attack used attacker-chosen low-order inputs or the `X = +/-Z`
-label. It may be generic unblinded scalar/value leakage. This candidate should
-only become a positive subproject after source instrumentation verifies that
-the label is stable, scalar-correlated, and affected by the 5.8.2 blinding path.
+```text
+unblinded path:
+  label at bit position s = scalar_bit[s] XOR scalar_bit[s+1]
+
+blinded/default path:
+  label at bit position s = scalar_bit[s] XOR scalar_bit[s-1]
+```
+
+Current classification: source-level coordinate-leakage audit.
+
+Additional public search result:
+
+```text
+PR #8392 body:
+  XOR in random value to scalar and perform special scalar multiplication.
+  Fixes zd#19039
+
+PR #8392 merged commit:
+  Multiply x3 and z3 by random value to randomize co-ordinates.
+
+PR #8736:
+  enables WOLFSSL_CURVE25519_BLINDING by default for applicable C-only builds.
+```
+
+This supports the positive source-level connection: wolfSSL's base-C
+Curve25519 scalar multiplication uses lifted Montgomery coordinates, PR #8392
+adds scalar and projective-coordinate blinding, and the local instrumentation
+finds the discrepancy-pole labels exactly at the fixed ladder formula sites.
 
 ## CVE Near Misses
 
@@ -225,8 +250,15 @@ For the next useful tests, prioritize:
 - NVD CVE-2025-12888: https://nvd.nist.gov/vuln/detail/CVE-2025-12888
 - NVD CVE-2025-3301: https://nvd.nist.gov/vuln/detail/CVE-2025-3301
 - NVD CVE-2025-7396: https://nvd.nist.gov/vuln/detail/CVE-2025-7396
+- CVEAWG CVE-2025-7396 record: https://cveawg.mitre.org/api/cve/CVE-2025-7396
+- GitHub Advisory GHSA-h9v3-wvxh-4mwp: https://github.com/advisories/GHSA-h9v3-wvxh-4mwp
+- OSV CVE-2025-7396: https://api.osv.dev/v1/vulns/CVE-2025-7396
 - wolfSSL Curve25519 blinding advisory: https://www.wolfssl.com/curve25519-blinding-support-added-in-wolfssl-5-8-0/
+- wolfSSL security vulnerabilities page: https://www.wolfssl.com/docs/security-vulnerabilities/
 - wolfSSL ChangeLog CVE-2025-7396 entry: https://github.com/wolfSSL/wolfssl/blob/master/ChangeLog.md
+- wolfSSL PR #8392: https://github.com/wolfSSL/wolfssl/pull/8392
+- wolfSSL PR #8736: https://github.com/wolfSSL/wolfssl/pull/8736
+- wolfSSL issue #10587: https://github.com/wolfSSL/wolfssl/issues/10587
 - wolfSSL 5.8.2 `fe_operations.c`: https://raw.githubusercontent.com/wolfSSL/wolfssl/v5.8.2-stable/wolfcrypt/src/fe_operations.c
 - wolfSSL 5.8.2 `fe_x25519_128.h`: https://raw.githubusercontent.com/wolfSSL/wolfssl/v5.8.2-stable/wolfcrypt/src/fe_x25519_128.h
 - wolfSSL 5.8.2 `fe_448.c`: https://raw.githubusercontent.com/wolfSSL/wolfssl/v5.8.2-stable/wolfcrypt/src/fe_448.c

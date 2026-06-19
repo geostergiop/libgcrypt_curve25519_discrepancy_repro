@@ -15,6 +15,8 @@ projective-coordinate state leak is not enough by itself.
 subprojects/
   libgcrypt-cve-2017-0379/
     Completed controlled source-instrumented reproduction.
+  wolfssl-cve-2025-7396-audit/
+    Source-level Curve25519 coordinate-leakage audit for wolfSSL base-C code.
 ```
 
 ## Research Claim Under Test
@@ -44,6 +46,7 @@ that the side channel observes.
 | Subproject | Status | Question |
 | --- | --- | --- |
 | `libgcrypt-cve-2017-0379` | Complete artifact | Does `u = +/-1` drive Libgcrypt 1.7.8 into the known leakage predicate? |
+| `wolfssl-cve-2025-7396-audit` | Source-level audit | Does wolfSSL's base-C Curve25519 ladder instantiate the same `u = +/-1 -> X = +/-Z` label, and how does that relate to PR #8392's scalar/projective-coordinate blinding? |
 
 ## Candidate Review
 
