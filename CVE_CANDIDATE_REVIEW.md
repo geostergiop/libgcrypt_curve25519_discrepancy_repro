@@ -1,37 +1,26 @@
 # CVE Candidate Review For Lifted-Coordinate Scalar-Multiplication Discrepancy
 
-Reviewed on 2026-06-18.
+Reviewed on 2026-06-19.
 
 ## Scope
 
-This review is no longer limited to Montgomery/Kummer ladders. A positive
-candidate may use any scalar multiplication whose implementation works in lifted
-coordinates, including:
+A positive example must use scalar multiplication whose implementation works in
+lifted coordinates and must expose a leakage label caused by an exceptional
+lifted-coordinate predicate. The current positive Montgomery examples use XZ
+coordinates, but the same review rule also covers Kummer surfaces, projective or
+Jacobian Weierstrass coordinates, Lopez-Dahab binary-curve coordinates,
+extended/inverted Edwards coordinates, Hessian coordinates, and genus-0
+toric/rational-coordinate lifts.
+
+Required bridge:
 
 ```text
-Montgomery XZ
-Kummer or Kummer-surface coordinates
-projective or Jacobian Weierstrass coordinates
-Lopez-Dahab binary-curve coordinates
-extended or inverted Edwards coordinates
-Hessian coordinates
-genus-0 toric/rational-coordinate lifts
-```
-
-The necessary bridge is still strict:
-
-```text
-attacker-influenced point, x-coordinate, curve point class, or scalar state
+attacker-influenced point, x-coordinate, point class, or scalar state
 -> scalar multiplication in lifted coordinates
 -> exceptional lifted-coordinate predicate or formula label
 -> timing/cache/power/EM/source-instrumented observability
 -> secret-dependent leakage
 ```
-
-Examples of acceptable labels include `X = Z`, `X = -Z`, `Z = 0`, identity or
-low-order lifted representatives, zero/small multiplication terms, exceptional
-addition/doubling formula branches, or reduction/carry labels caused by those
-lifted-coordinate terms.
 
 Not enough by itself:
 
@@ -59,31 +48,34 @@ point x-coordinate, toric, genus 0, algebraic torus, Lucas ladder.
 
 ## Current Result
 
-Libgcrypt CVE-2017-0379 remains the direct historical CVE-backed instance for
-the strict toric/Kummer claim.
+Libgcrypt CVE-2017-0379 remains the confirmed attack instance. The published
+attack uses order-4 Curve25519 inputs, and this repository ties those inputs to:
 
-wolfSSL CVE-2025-7396 is now a source-instrumented implementation instance.
-Public CVE/thesis material confirms a live EM side-channel surface in
-wolfSSL's base-C Curve25519 scalar multiplication. The local subproject
-confirms that the same ladder instantiates the discrepancy-pole label
-`u = +/-1 -> X = +/-Z`, and PR #8392 is compatible with a leakage model
-involving projective Montgomery coordinate values in the base-C ladder.
+```text
+u = +/-1 -> X = +/-Z -> short/long reduction label
+```
+
+wolfSSL CVE-2025-7396 is a confirmed implementation instance. Public
+CVE/advisory material establishes a physical side-channel hardening surface for
+wolfSSL's base-C Curve25519 scalar multiplication. The local artifact confirms
+that the same base-C ladder instantiates:
+
+```text
+u = +/-1 -> X = +/-Z -> operation-local zero/Hamming-weight label
+```
+
+The exact `255/255` scalar-transition result is for the unblinded wolfSSL
+schedule in a source/model-level EM leakage model. For wolfSSL's blinded/default
+path, the supported statement is divisor invariance under coordinate scaling and
+scalar-mask consistency, not that the public CVE trace used the same simple
+unblinded classifier.
 
 ## Implementation Instances
 
 | Candidate | Status | Reason |
 | --- | --- | --- |
-| CVE-2017-0379, Libgcrypt Curve25519 | Confirmed attack instance of algebraic discrepancy | Direct match. The published attack uses a Curve25519 point of order 4 as chosen ciphertext. Libgcrypt uses Montgomery ladder scalar-by-point multiplication, and the point-at-infinity/order-2/order-4 interactions create side-channel leakage. The local artifact ties this to `u = +/-1 -> X = +/-Z -> short/long reduction label`. |
-| CVE-2025-7396, wolfSSL Curve25519 C implementation | Confirmed implementation instance of algebraic discrepancy | Public CVE/thesis material confirms a live EM side-channel surface in wolfSSL's base-C Curve25519 scalar multiplication. Local instrumentation confirms that `u = +1` and `u = -1` force `X = +/-Z` labels in wolfSSL's base-C Montgomery ladder. In the unblinded path the label equals `scalar_bit[s] XOR scalar_bit[s+1]`; in the blinded/default path it equals `scalar_bit[s] XOR scalar_bit[s-1]`. PR #8392's public text describes scalar blinding and special scalar multiplication; its merged commit also randomizes `x3,z3`, making the patch trail compatible with a leakage model involving projective Montgomery coordinate values. |
-
-## Remaining Research Candidates
-
-These are useful source-level tests for a broader lifted-coordinate discrepancy
-claim.
-
-| Candidate | Status | Why It Matters |
-| --- | --- | --- |
-| Hessian, Edwards, and genus-0 toric/rational testbeds | Test candidate | Useful mathematical generalization tests where the experiment can directly instrument lifted-coordinate labels during scalar multiplication. |
+| CVE-2017-0379, Libgcrypt Curve25519 | Confirmed attack instance of algebraic discrepancy | Direct match. The published attack uses a Curve25519 point of order 4 as chosen ciphertext. Libgcrypt uses Montgomery ladder scalar-by-point multiplication. The local artifact ties `u = +/-1` to `X = +/-Z` and then to a short/long reduction label inside Libgcrypt 1.7.8. |
+| CVE-2025-7396, wolfSSL Curve25519 C implementation | Confirmed implementation instance of algebraic discrepancy | Public CVE/advisory material confirms a physical side-channel hardening surface in wolfSSL's base-C Curve25519 scalar multiplication. Local source/model instrumentation confirms that `u = +1` and `u = -1` force `X = +/-Z` labels in wolfSSL's base-C Montgomery ladder. In the unblinded schedule, operation-local zero/HW windows match the adjacent scalar-transition label `255/255`. |
 
 ## Local Audit: wolfSSL CVE-2025-7396
 
@@ -97,22 +89,34 @@ Versions checked:
   v5.8.2-stable commit decea12e223869c8f8f3ab5a53dc90b69f436eb2
 ```
 
-The public CVE says wolfSSL 5.8.2 turns on blinding support by default for the
-base C Curve25519 implementation in applicable builds, as additional protection
-for physical side-channel observation. wolfSSL's advisory says 5.8.0 added
-optional blinding and that future releases would enable it by default. The
-configuration class of interest is therefore unblinded base-C Curve25519 private
-key scalar multiplication, not every wolfSSL build. The affected APIs listed by
-the advisory include:
+Public source boundary:
 
 ```text
-wc_curve25519_export_public_ex
-wc_curve25519_make_key
-wc_curve25519_generic
-wc_curve25519_shared_secret_ex
+NVD/GHSA:
+  wolfSSL 5.8.2 turns Curve25519 blinding on by default for applicable builds.
+  The option is only for the base-C Curve25519 implementation.
+  ARM assembly, Intel assembly, and small Curve25519 builds are excluded.
+  The attack vector is physical.
+
+wolfSSL advisory:
+  wolfSSL 5.8.0 added optional hardening against power or EM analysis during
+  Curve25519 private-key operations.
+  Affected APIs include wc_curve25519_export_public_ex,
+  wc_curve25519_make_key, wc_curve25519_generic, and
+  wc_curve25519_shared_secret_ex.
+
+PR #8392:
+  adds Curve25519 blinding for private-key use.
+  The PR body says it XORs a random value into the scalar and performs special
+  scalar multiplication.
+  The merged commit message says it multiplies x3 and z3 by a random value to
+  randomize coordinates.
+
+PR #8736:
+  adjusts the default Curve25519 build so applicable C builds use the blinding.
 ```
 
-The relevant source bridge is concrete:
+The relevant source bridge is:
 
 ```text
 wolfcrypt/src/curve25519.c
@@ -125,10 +129,6 @@ wolfcrypt/src/curve25519.c
 wolfcrypt/src/fe_operations.c
   curve25519(...)
     Montgomery XZ ladder with x2,z2,x3,z3
-
-wolfssl/wolfcrypt/settings.h in 5.8.2
-  defines WOLFSSL_CURVE25519_BLINDING by default for C-only, non-small
-  Curve25519 builds unless explicitly disabled.
 ```
 
 The local source instrumentation mirrors wolfSSL's ladder formulas over
@@ -145,52 +145,54 @@ u = -1:
   repeated X + Z = 0 labels at fixed ladder formula sites
 ```
 
-That is the same kind of discrepancy bridge as the Libgcrypt artifact at the
-math/source level:
+The latest symbolic/source-model result is:
+
+```text
+u = +1:
+  exactly one relevant x2/x3 zero each step: 255/255
+  x2-zero label matches unblinded cswap transition: 255/255
+  aggregate sumHW: 433771
+  zero outputs: 1147
+
+u = -1:
+  exactly one relevant x2/x3 zero each step: 255/255
+  x2-zero label matches unblinded cswap transition: 255/255
+  aggregate sumHW: 437482
+  zero outputs: 1147
+
+generic u = 9:
+  relevant pole zero slots: 0
+  aggregate sumHW: 581379
+  zero outputs: 0
+```
+
+Interpretation:
 
 ```text
 Curve25519 discrepancy pole u = +/-1
 -> Montgomery XZ lifted state X = +/-Z
--> zero input to field subtraction/squaring/multiplication sites
--> physically plausible DPA/EM value label
+-> zero input/output at fixed field-operation windows
+-> operation-local Hamming-weight/register-zero label
+-> physically plausible EM/power template target
 ```
 
-The exact source-instrumented scalar relations were:
+The aggregate Hamming-weight intervals overlap, so the artifact does not claim a
+perfect whole-function HW classifier. The clean label is operation-local.
 
-```text
-unblinded path:
-  label at bit position s = scalar_bit[s] XOR scalar_bit[s+1]
+## Remaining Research Candidates
 
-blinded/default path:
-  label at bit position s = scalar_bit[s] XOR scalar_bit[s-1]
-```
+These are useful source-level tests for a broader lifted-coordinate discrepancy
+claim.
 
-Current classification: source-level coordinate-leakage audit.
-
-Additional public search result:
-
-```text
-PR #8392 body:
-  XOR in random value to scalar and perform special scalar multiplication.
-  Fixes zd#19039
-
-PR #8392 merged commit:
-  Multiply x3 and z3 by random value to randomize co-ordinates.
-
-PR #8736:
-  enables WOLFSSL_CURVE25519_BLINDING by default for applicable C-only builds.
-```
-
-This supports the positive source-level connection: wolfSSL's base-C
-Curve25519 scalar multiplication uses lifted Montgomery coordinates, PR #8392
-adds scalar and projective-coordinate blinding, and the local instrumentation
-finds the discrepancy-pole labels exactly at the fixed ladder formula sites.
+| Candidate | Status | Why It Matters |
+| --- | --- | --- |
+| Hessian, Edwards, and genus-0 toric/rational testbeds | Test candidate | Useful mathematical generalization tests where the experiment can directly instrument lifted-coordinate labels during scalar multiplication. |
 
 ## CVE Near Misses
 
-The key distinction is: using lifted coordinates is necessary for this
-generalization, but it is not sufficient. The CVE must also leak a label caused
-by the lifted-coordinate state.
+Using lifted coordinates is necessary for this generalization, but it is not
+sufficient. The CVE must also leak a label caused by the lifted-coordinate
+state.
 
 | CVE | Project | Lifted-coordinate use? | Classification | Reason |
 | --- | --- | --- | --- | --- |
@@ -223,16 +225,6 @@ input/scalar condition
 -> stable implementation label
 -> externally plausible timing/cache/power/EM observation
 -> recoverable secret-dependent information
-```
-
-For the next useful tests, prioritize:
-
-```text
-1. Instrument projective/Jacobian scalar multiplication formulas and label
-   exceptional terms such as Z=0, denominator-equivalent zero terms, identity
-   representatives, and zero/small products.
-2. Only then map a CVE to the discrepancy framework if the observed label is
-   caused by the lifted-coordinate state, not merely by scalar bit length.
 ```
 
 ## Sources Checked
