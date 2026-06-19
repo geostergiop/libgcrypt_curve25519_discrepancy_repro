@@ -79,8 +79,8 @@ that the side channel observes.
 
 | Subproject | Status | Evidence |
 | --- | --- | --- |
-| `libgcrypt-cve-2017-0379` | Confirmed implementation instance | The historical CVE attack uses attacker-controlled order-4 Curve25519 inputs. The artifact ties those inputs to `u = +/-1 -> X = +/-Z -> short/long reduction label` inside Libgcrypt 1.7.8. |
-| `wolfssl-cve-2025-7396-audit` | Source-instrumented implementation instance | Public CVE/thesis material confirms a live EM side-channel surface in wolfSSL's base-C Curve25519 scalar multiplication. The artifact confirms that attacker-controlled `u = +/-1` reaches `X = +/-Z` and produces scalar-transition coordinate labels in the same ladder. |
+| `libgcrypt-cve-2017-0379` | Confirmed attack instance of algebraic discrepancy | The historical CVE attack uses attacker-controlled order-4 Curve25519 inputs. The artifact ties those inputs to `u = +/-1 -> X = +/-Z -> short/long reduction label` inside Libgcrypt 1.7.8. |
+| `wolfssl-cve-2025-7396-audit` | Confirmed implementation instance of algebraic discrepancy | Public CVE/thesis material confirms a live EM side-channel surface in wolfSSL's base-C Curve25519 scalar multiplication. The artifact confirms that attacker-controlled `u = +/-1` reaches `X = +/-Z` and produces scalar-transition coordinate labels in the same ladder. |
 
 ## Candidate Review
 
