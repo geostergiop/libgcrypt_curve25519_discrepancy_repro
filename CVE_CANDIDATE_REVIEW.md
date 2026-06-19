@@ -59,29 +59,30 @@ point x-coordinate, toric, genus 0, algebraic torus, Lucas ladder.
 
 ## Current Result
 
-Libgcrypt CVE-2017-0379 remains the confirmed CVE-backed instance for the
-strict toric/Kummer claim.
+Libgcrypt CVE-2017-0379 remains the direct historical CVE-backed instance for
+the strict toric/Kummer claim.
 
-Local update: wolfSSL CVE-2025-7396 was instrumented as a source-level
-subproject. The wolfSSL base-C Curve25519 code path instantiates the
-discrepancy-pole label `u = +/-1 -> X = +/-Z`, and PR #8392 is compatible with
-a leakage model involving projective Montgomery coordinate values in the
-base-C ladder.
+wolfSSL CVE-2025-7396 is now a source-instrumented implementation instance.
+Public CVE/thesis material confirms a live EM side-channel surface in
+wolfSSL's base-C Curve25519 scalar multiplication. The local subproject
+confirms that the same ladder instantiates the discrepancy-pole label
+`u = +/-1 -> X = +/-Z`, and PR #8392 is compatible with a leakage model
+involving projective Montgomery coordinate values in the base-C ladder.
 
-## Confirmed Positive
+## Implementation Instances
 
 | Candidate | Status | Reason |
 | --- | --- | --- |
-| CVE-2017-0379, Libgcrypt Curve25519 | Keep | Direct match. The published attack uses a Curve25519 point of order 4 as chosen ciphertext. Libgcrypt uses Montgomery ladder scalar-by-point multiplication, and the point-at-infinity/order-2/order-4 interactions create side-channel leakage. The local artifact ties this to `u = +/-1 -> X = +/-Z -> short/long reduction label`. |
+| CVE-2017-0379, Libgcrypt Curve25519 | Confirmed implementation instance | Direct match. The published attack uses a Curve25519 point of order 4 as chosen ciphertext. Libgcrypt uses Montgomery ladder scalar-by-point multiplication, and the point-at-infinity/order-2/order-4 interactions create side-channel leakage. The local artifact ties this to `u = +/-1 -> X = +/-Z -> short/long reduction label`. |
+| CVE-2025-7396, wolfSSL Curve25519 C implementation | Source-instrumented implementation instance | Public CVE/thesis material confirms a live EM side-channel surface in wolfSSL's base-C Curve25519 scalar multiplication. Local instrumentation confirms that `u = +1` and `u = -1` force `X = +/-Z` labels in wolfSSL's base-C Montgomery ladder. In the unblinded path the label equals `scalar_bit[s] XOR scalar_bit[s+1]`; in the blinded/default path it equals `scalar_bit[s] XOR scalar_bit[s-1]`. PR #8392's public text describes scalar blinding and special scalar multiplication; its merged commit also randomizes `x3,z3`, making the patch trail compatible with a leakage model involving projective Montgomery coordinate values. |
 
-## Source-Level And Research Candidates
+## Remaining Research Candidates
 
 These are useful source-level tests for a broader lifted-coordinate discrepancy
 claim.
 
 | Candidate | Status | Why It Matters |
 | --- | --- | --- |
-| CVE-2025-7396, wolfSSL Curve25519 C implementation | Source-level coordinate-leakage audit | Local instrumentation confirms that `u = +1` and `u = -1` force `X = +/-Z` labels in wolfSSL's base-C Montgomery ladder. In the unblinded path the label equals `scalar_bit[s] XOR scalar_bit[s+1]`; in the blinded/default path it equals `scalar_bit[s] XOR scalar_bit[s-1]`. PR #8392's public text describes scalar blinding and special scalar multiplication; its merged commit also randomizes `x3,z3`, making the patch trail compatible with a leakage model involving projective Montgomery coordinate values. |
 | Hessian, Edwards, and genus-0 toric/rational testbeds | Test candidate | Useful mathematical generalization tests where the experiment can directly instrument lifted-coordinate labels during scalar multiplication. |
 
 ## Local Audit: wolfSSL CVE-2025-7396

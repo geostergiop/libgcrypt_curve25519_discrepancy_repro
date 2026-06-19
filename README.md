@@ -75,18 +75,19 @@ Future positive examples must have the same kind of bridge: the algebraic object
 must be more than an analogy. It must directly predict the implementation label
 that the side channel observes.
 
-## Current status
+## Implementation Instances
 
-| Subproject | Status | Question |
+| Subproject | Status | Evidence |
 | --- | --- | --- |
-| `libgcrypt-cve-2017-0379` | Complete artifact | Does `u = +/-1` drive Libgcrypt 1.7.8 into the known leakage predicate? |
-| `wolfssl-cve-2025-7396-audit` | Source-level audit | Does wolfSSL's base-C Curve25519 ladder instantiate the same `u = +/-1 -> X = +/-Z` label, and how does that relate to PR #8392's scalar/projective-coordinate blinding? |
+| `libgcrypt-cve-2017-0379` | Confirmed implementation instance | The historical CVE attack uses attacker-controlled order-4 Curve25519 inputs. The artifact ties those inputs to `u = +/-1 -> X = +/-Z -> short/long reduction label` inside Libgcrypt 1.7.8. |
+| `wolfssl-cve-2025-7396-audit` | Source-instrumented implementation instance | Public CVE/thesis material confirms a live EM side-channel surface in wolfSSL's base-C Curve25519 scalar multiplication. The artifact confirms that attacker-controlled `u = +/-1` reaches `X = +/-Z` and produces scalar-transition coordinate labels in the same ladder. |
 
 ## Candidate Review
 
-See `CVE_CANDIDATE_REVIEW.md` for the current triage of candidate CVEs and the
-rejection criteria for scalar-multiplication side-channel cases that do not
-expose a lifted-coordinate leakage predicate.
+See `CVE_CANDIDATE_REVIEW.md` for the current list of implementation
+instances, remaining candidate CVEs, and rejection criteria for
+scalar-multiplication side-channel cases that do not expose a lifted-coordinate
+leakage predicate.
 
 ## Primary references
 
