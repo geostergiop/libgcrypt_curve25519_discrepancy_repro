@@ -16,7 +16,8 @@ subprojects/
   libgcrypt-cve-2017-0379/
     Completed controlled source-instrumented reproduction.
   wolfssl-cve-2025-7396-audit/
-    Source-level Curve25519 coordinate-leakage audit for wolfSSL base-C code.
+    Source-level Curve25519 coordinate-leakage audit for wolfSSL base-C code,
+    including instrumentation patch, harness, analyzer, and saved traces.
 ```
 
 ## Research Claim Under Test
@@ -36,6 +37,19 @@ name exceptional algebraic states whose implementation consequences can become
 observable. The Libgcrypt case is direct because the Curve25519 discrepancy
 poles `u = +/-1` correspond to projective Kummer states `X = +/-Z`, and the
 historical implementation exposes a short/long reduction label.
+
+The wolfSSL source-level audit shows the same algebraic lift in wolfSSL's
+base-C Montgomery ladder:
+
+```text
+u = +1 <=> X = Z  -> x_i - z_i == 0
+u = -1 <=> X = -Z -> x_i + z_i == 0
+```
+
+The subproject includes the source patch that logs these predicates, a harness
+that drives `u = 9`, `u = +1`, and `u = -1`, an analyzer, and saved trace
+artifacts showing `255/255` scalar-transition matches for the discrepancy-pole
+inputs.
 
 Future positive examples must have the same kind of bridge: the algebraic object
 must be more than an analogy. It must directly predict the implementation label
